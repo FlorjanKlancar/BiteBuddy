@@ -1,0 +1,31 @@
+{
+	"name": "@bitebuddy/api",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "bun --watch src/index.ts",
+		"build": "bun build src/index.ts --outdir dist --target bun",
+		"start": "bun dist/index.js",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:push": "drizzle-kit push",
+		"db:studio": "drizzle-kit studio"
+	},
+	"dependencies": {
+		"@ai-sdk/openai": "^1.1.9",
+		"ai": "^4.1.61",
+		"better-auth": "^1.2.7",
+		"drizzle-orm": "^0.38.4",
+		"hono": "^4.6.20",
+		"postgres": "^3.4.5",
+		"zod": "^3.24.2",
+		"@bitebuddy/logger": "workspace:*",
+		"@bitebuddy/shared": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.2.4",
+		"drizzle-kit": "^0.30.5",
+		"typescript": "^5.7.3"
+	}
+}
