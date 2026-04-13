@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { auth } from "./auth.js";
+import { runMigrations } from "./db/migrate.js";
 import analyzeRoutes from "./routes/analyze.js";
 import customFoodsRoutes from "./routes/custom-foods.js";
 import foodLogRoutes from "./routes/food-log.js";
@@ -12,6 +13,10 @@ import statsRoutes from "./routes/stats.js";
 import weightRoutes from "./routes/weight.js";
 
 const logger = createLogger("api");
+
+// Run database migrations before starting the server
+await runMigrations();
+
 const app = new Hono();
 
 // CORS
