@@ -76,7 +76,9 @@ export const activityLevelEnum = pgEnum("activity_level", [
 ]);
 
 export const userProfiles = pgTable("user_profiles", {
-	userId: text("user_id").primaryKey(),
+	userId: text("user_id")
+		.primaryKey()
+		.references(() => user.id, { onDelete: "cascade" }),
 	age: integer("age"),
 	heightCm: real("height_cm"),
 	weightKg: real("weight_kg"),
@@ -95,7 +97,9 @@ export const foodLogEntries = pgTable("food_log_entries", {
 	id: text("id")
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
-	userId: text("user_id").notNull(),
+	userId: text("user_id")
+		.notNull()
+		.references(() => user.id, { onDelete: "cascade" }),
 	date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
 	mealType: mealTypeEnum("meal_type").notNull(),
 	name: text("name").notNull(),
@@ -115,7 +119,9 @@ export const customFoods = pgTable("custom_foods", {
 	id: text("id")
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
-	userId: text("user_id").notNull(),
+	userId: text("user_id")
+		.notNull()
+		.references(() => user.id, { onDelete: "cascade" }),
 	name: text("name").notNull(),
 	calories: real("calories").notNull(),
 	proteinG: real("protein_g").notNull().default(0),
@@ -130,7 +136,9 @@ export const weightEntries = pgTable("weight_entries", {
 	id: text("id")
 		.primaryKey()
 		.$defaultFn(() => crypto.randomUUID()),
-	userId: text("user_id").notNull(),
+	userId: text("user_id")
+		.notNull()
+		.references(() => user.id, { onDelete: "cascade" }),
 	date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
 	weightKg: real("weight_kg").notNull(),
 	createdAt: timestamp("created_at").defaultNow().notNull(),

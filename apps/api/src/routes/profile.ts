@@ -1,3 +1,4 @@
+import { UserProfile } from "@bitebuddy/shared";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db } from "../db/index.js";
@@ -27,17 +28,19 @@ app.put("/", authMiddleware, async (c) => {
 	const [existing] = await db.select().from(userProfiles).where(eq(userProfiles.userId, user.id));
 
 	if (existing) {
+		const parsed = UserProfile.partial().parse(body);
 		const [updated] = await db
 			.update(userProfiles)
-			.set({ ...body, updatedAt: new Date() })
+			.set({ ...parsed, updatedAt: new Date() })
 			.where(eq(userProfiles.userId, user.id))
 			.returning();
 		return c.json(updated);
 	}
 
+	const parsed = UserProfile.parse(body);
 	const [created] = await db
 		.insert(userProfiles)
-		.values({ userId: user.id, ...body })
+		.values({ userId: user.id, ...parsed })
 		.returning();
 
 	return c.json(created, 201);

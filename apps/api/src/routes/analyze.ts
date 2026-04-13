@@ -12,6 +12,11 @@ function checkRateLimit(userId: string): boolean {
 	const now = Date.now();
 	const entry = rateLimitMap.get(userId);
 
+	// Evict expired entries to prevent memory leak
+	for (const [key, val] of rateLimitMap) {
+		if (now > val.resetAt) rateLimitMap.delete(key);
+	}
+
 	if (!entry || now > entry.resetAt) {
 		rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
 		return true;
@@ -57,8 +62,7 @@ app.post("/", authMiddleware, async (c) => {
 		return c.json(result);
 	} catch (err) {
 		console.error("AI analysis failed:", err);
-		const message = err instanceof Error ? err.message : "Analysis failed";
-		return c.json({ error: message }, 500);
+		return c.json({ error: "Analysis failed. Please try again." }, 500);
 	}
 });
 

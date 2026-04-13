@@ -2,18 +2,30 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: bitebuddy
-      POSTGRES_PASSWORD: bitebuddy
-      POSTGRES_DB: bitebuddy
+      POSTGRES_USER: ${POSTGRES_USER:-bitebuddy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bitebuddy}
+      POSTGRES_DB: ${POSTGRES_DB:-bitebuddy}
     ports:
       - "${PORT_DB:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bitebuddy"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bitebuddy}"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bitebuddy}:${POSTGRES_PASSWORD:-bitebuddy}@postgres:5432/${POSTGRES_DB:-bitebuddy}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["bun", "run", "src/db/migrate.ts"]
+    restart: "no"
 
   api:
     build:
@@ -23,10 +35,10 @@ services:
       - "${PORT_API:-3001}:3001"
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://bitebuddy:bitebuddy@postgres:5432/bitebuddy
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bitebuddy}:${POSTGRES_PASSWORD:-bitebuddy}@postgres:5432/${POSTGRES_DB:-bitebuddy}
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   web:
     build:
@@ -38,7 +50,8 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:${PORT_API:-3001}
     depends_on:
-      - api
+      api:
+        condition: service_started
 
 volumes:
   postgres_data:

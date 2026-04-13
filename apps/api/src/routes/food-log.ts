@@ -12,8 +12,8 @@ app.get("/", authMiddleware, async (c) => {
 	const user = c.get("user");
 	const date = c.req.query("date");
 
-	if (!date) {
-		return c.json({ error: "date query parameter is required" }, 400);
+	if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+		return c.json({ error: "date query parameter is required in YYYY-MM-DD format" }, 400);
 	}
 
 	const entries = await db

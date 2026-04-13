@@ -10,8 +10,7 @@
 		"resolveJsonModule": true,
 		"isolatedModules": true,
 		"declaration": true,
-		"declarationMap": true,
-		"sourceMap": true
+		"declarationMap": true
 	},
 	"exclude": ["node_modules"]
 }
