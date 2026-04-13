@@ -87,7 +87,7 @@ export default function RegisterPage() {
 
 	async function handleGoogleSignIn() {
 		try {
-			await signIn.social({ provider: "google", callbackURL: "/onboarding" });
+			await signIn.social({ provider: "google", callbackURL: `${window.location.origin}/onboarding` });
 		} catch {
 			setServerError("Could not connect to Google. Please try again.");
 		}

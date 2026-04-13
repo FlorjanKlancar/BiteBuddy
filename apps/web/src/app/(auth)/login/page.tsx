@@ -43,7 +43,7 @@ export default function LoginPage() {
 
 	async function handleGoogleSignIn() {
 		try {
-			await signIn.social({ provider: "google", callbackURL: "/dashboard" });
+			await signIn.social({ provider: "google", callbackURL: `${window.location.origin}/dashboard` });
 		} catch {
 			setError("Could not connect to Google. Please try again.");
 		}

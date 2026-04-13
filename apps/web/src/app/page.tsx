@@ -11,6 +11,7 @@ import {
 	motion,
 	staggerItemVariants,
 } from "@/components/motion";
+import { LandingSkeleton } from "@/components/skeletons/landing-skeleton";
 import { useSession } from "@/lib/auth-client";
 import {
 	BarChart3,
@@ -37,11 +38,7 @@ export default function LandingPage() {
 	const blob3Y = useTransform(scrollY, [0, 600], [0, -50]);
 
 	if (isPending) {
-		return (
-			<div className="flex min-h-screen items-center justify-center bg-surface">
-				<div className="animate-pulse text-on-surface-variant">Loading...</div>
-			</div>
-		);
+		return <LandingSkeleton />;
 	}
 
 	return (

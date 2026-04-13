@@ -2,6 +2,7 @@
 
 import { EmptyPlateIllustration } from "@/components/illustrations";
 import { FadeIn } from "@/components/motion";
+import { DiarySkeleton } from "@/components/skeletons/diary-skeleton";
 import { api } from "@/lib/api";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -240,9 +241,7 @@ export default function DiaryPage() {
 
 			{/* Meals - swipeable content */}
 			{initialLoad && loading ? (
-				<div className="text-center text-on-surface-variant py-8">
-					<div className="animate-pulse">Loading...</div>
-				</div>
+				<DiarySkeleton />
 			) : (
 				<AnimatePresence mode="wait" custom={direction}>
 					<motion.div

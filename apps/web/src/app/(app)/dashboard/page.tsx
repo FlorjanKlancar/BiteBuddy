@@ -3,6 +3,7 @@
 import { CalorieRing } from "@/components/calorie-ring";
 import { MacroChart } from "@/components/macro-chart";
 import { FadeIn } from "@/components/motion";
+import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
 import { TrendingDown, TrendingUp } from "lucide-react";
@@ -26,16 +27,18 @@ export default function DashboardPage() {
 	const [daily, setDaily] = useState<DailySummary | null>(null);
 	const [weekly, setWeekly] = useState<WeeklySummary[]>([]);
 	const [calorieTarget] = useState(2000);
+	const [loading, setLoading] = useState(true);
 
 	const today = new Date().toISOString().split("T")[0];
 
 	useEffect(() => {
-		api<DailySummary>(`/api/stats/daily?date=${today}`)
-			.then(setDaily)
-			.catch(console.error);
-		api<WeeklySummary[]>("/api/stats/weekly")
-			.then(setWeekly)
-			.catch(console.error);
+		setLoading(true);
+		Promise.all([
+			api<DailySummary>(`/api/stats/daily?date=${today}`).then(setDaily),
+			api<WeeklySummary[]>("/api/stats/weekly").then(setWeekly),
+		])
+			.catch(console.error)
+			.finally(() => setLoading(false));
 	}, [today]);
 
 	const consumed = daily?.totalCalories ?? 0;
@@ -58,6 +61,10 @@ export default function DashboardPage() {
 	}
 
 	const motivation = getMotivation();
+
+	if (loading) {
+		return <DashboardSkeleton />;
+	}
 
 	const weeklyAvg =
 		weekly.length > 0

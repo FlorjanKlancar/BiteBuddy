@@ -2,6 +2,7 @@
 
 import { AppHeader } from "@/components/app-header";
 import { BottomNav } from "@/components/bottom-nav";
+import { AppLayoutSkeleton } from "@/components/skeletons/app-layout-skeleton";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
 import { usePathname, useRouter } from "next/navigation";
@@ -46,11 +47,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 	const shouldRedirect = !session || (!hasProfile && pathname !== "/onboarding");
 
 	if (isPending || (session && !profileChecked) || shouldRedirect) {
-		return (
-			<div className="flex min-h-screen items-center justify-center bg-surface">
-				<div className="animate-pulse text-on-surface-variant">Loading...</div>
-			</div>
-		);
+		return <AppLayoutSkeleton />;
 	}
 
 	const isOnboarding = pathname === "/onboarding";
