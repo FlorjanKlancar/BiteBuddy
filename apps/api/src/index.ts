@@ -45,16 +45,43 @@ app.get("/health", (c) => c.json({ status: "ok" }));
 
 // Better Auth handler — rewrite request URL so Better Auth sees the real
 // public origin instead of the internal http://localhost behind the proxy.
-app.on(["POST", "GET"], "/api/auth/**", (c) => {
+app.on(["POST", "GET"], "/api/auth/**", async (c) => {
 	const baseURL = process.env.BETTER_AUTH_URL;
+	const reqUrl = c.req.url;
+	const cookies = c.req.header("cookie") ?? "(none)";
+	const isCallback = reqUrl.includes("/callback/");
+
+	if (isCallback) {
+		logger.info(`[AUTH CALLBACK] URL: ${reqUrl}`);
+		logger.info(`[AUTH CALLBACK] Cookies present: ${cookies}`);
+		logger.info(`[AUTH CALLBACK] BETTER_AUTH_URL: ${baseURL}`);
+		logger.info(`[AUTH CALLBACK] NODE_ENV: ${process.env.NODE_ENV}`);
+	}
+
+	let request = c.req.raw;
 	if (baseURL) {
-		const url = new URL(c.req.url);
+		const url = new URL(reqUrl);
 		const publicUrl = new URL(baseURL);
 		url.protocol = publicUrl.protocol;
 		url.host = publicUrl.host;
-		return auth.handler(new Request(url.toString(), c.req.raw));
+		const rewrittenUrl = url.toString();
+		if (isCallback) {
+			logger.info(`[AUTH CALLBACK] Rewritten URL: ${rewrittenUrl}`);
+		}
+		request = new Request(rewrittenUrl, c.req.raw);
 	}
-	return auth.handler(c.req.raw);
+
+	const response = await auth.handler(request);
+
+	if (!isCallback) {
+		// Log Set-Cookie headers on the initial sign-in (before redirect to Google)
+		const setCookies = response.headers.getSetCookie?.() ?? [];
+		if (setCookies.length > 0) {
+			logger.info(`[AUTH SIGNIN] Set-Cookie headers: ${JSON.stringify(setCookies)}`);
+		}
+	}
+
+	return response;
 });
 
 // API routes (analyze must be before the default body limit takes effect)
