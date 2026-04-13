@@ -43,8 +43,19 @@ app.use("/api/analyze", bodyLimit({ maxSize: 6 * 1024 * 1024 }));
 // Health check
 app.get("/health", (c) => c.json({ status: "ok" }));
 
-// Better Auth handler
-app.on(["POST", "GET"], "/api/auth/**", (c) => auth.handler(c.req.raw));
+// Better Auth handler — rewrite request URL so Better Auth sees the real
+// public origin instead of the internal http://localhost behind the proxy.
+app.on(["POST", "GET"], "/api/auth/**", (c) => {
+	const baseURL = process.env.BETTER_AUTH_URL;
+	if (baseURL) {
+		const url = new URL(c.req.url);
+		const publicUrl = new URL(baseURL);
+		url.protocol = publicUrl.protocol;
+		url.host = publicUrl.host;
+		return auth.handler(new Request(url.toString(), c.req.raw));
+	}
+	return auth.handler(c.req.raw);
+});
 
 // API routes (analyze must be before the default body limit takes effect)
 app.route("/api/analyze", analyzeRoutes);
