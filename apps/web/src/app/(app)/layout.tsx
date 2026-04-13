@@ -19,6 +19,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 	useEffect(() => {
 		if (!session) return;
 
+		setProfileChecked(false);
+
 		api("/api/profile")
 			.then((profile) => {
 				setHasProfile(profile !== null);
@@ -32,7 +34,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 		api<{ streak: number }>("/api/stats/streak")
 			.then((s) => setStreak(s.streak))
 			.catch(() => {});
-	}, [session, pathname]);
+	}, [session]);
 
 	// Redirect in an effect to avoid setState-during-render
 	useEffect(() => {
@@ -56,8 +58,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 		<div
 			className="min-h-screen bg-surface"
 			style={{
-				backgroundImage:
-					"radial-gradient(circle, rgba(18,28,42,0.12) 1px, transparent 1px)",
+				backgroundImage: "radial-gradient(circle, rgba(18,28,42,0.12) 1px, transparent 1px)",
 				backgroundSize: "24px 24px",
 			}}
 		>

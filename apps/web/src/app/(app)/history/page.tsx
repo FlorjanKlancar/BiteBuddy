@@ -15,12 +15,15 @@ interface WeeklySummary {
 
 export default function HistoryPage() {
 	const [weekly, setWeekly] = useState<WeeklySummary[]>([]);
-	const [calorieTarget] = useState(2000);
+	const [calorieTarget, setCalorieTarget] = useState(2000);
 
 	useEffect(() => {
-		api<WeeklySummary[]>("/api/stats/weekly")
-			.then(setWeekly)
-			.catch(console.error);
+		Promise.all([
+			api<WeeklySummary[]>("/api/stats/weekly").then(setWeekly),
+			api<{ calorieTarget?: number } | null>("/api/profile").then((p) => {
+				if (p?.calorieTarget) setCalorieTarget(p.calorieTarget);
+			}),
+		]).catch(console.error);
 	}, []);
 
 	return (
@@ -50,18 +53,14 @@ export default function HistoryPage() {
 			{weekly.length === 0 ? (
 				<FadeIn delay={0.1}>
 					<div className="text-center py-10">
-						<p className="text-on-surface-variant">
-							No logged days yet. Start by logging food!
-						</p>
+						<p className="text-on-surface-variant">No logged days yet. Start by logging food!</p>
 					</div>
 				</FadeIn>
 			) : (
 				<div className="space-y-2">
 					{weekly.map((day, i) => {
 						const isOver = day.totalCalories > calorieTarget * 1.1;
-						const isUnder =
-							day.totalCalories > 0 &&
-							day.totalCalories <= calorieTarget * 0.9;
+						const isUnder = day.totalCalories > 0 && day.totalCalories <= calorieTarget * 0.9;
 
 						return (
 							<FadeIn key={day.date} delay={0.1 + i * 0.03}>
@@ -80,9 +79,7 @@ export default function HistoryPage() {
 										/>
 										<div className="flex-1 min-w-0">
 											<p className="text-sm font-semibold text-foreground">
-												{new Date(
-													day.date + "T12:00:00",
-												).toLocaleDateString("en-US", {
+												{new Date(`${day.date}T12:00:00`).toLocaleDateString("en-US", {
 													weekday: "short",
 													month: "short",
 													day: "numeric",

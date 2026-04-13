@@ -2,7 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { FoodAnalysisResult } from "@bitebuddy/shared";
 import { generateObject } from "ai";
 
-export async function analyzeFood(imageBase64: string) {
+export async function analyzeFood(imageBase64: string, userContext?: string) {
 	const result = await generateObject({
 		model: openai("gpt-4o-mini"),
 		schema: FoodAnalysisResult,
@@ -23,7 +23,19 @@ SECURITY RULES — you MUST follow these at all times:
 				content: [
 					{
 						type: "text",
-						text: "Analyze this food photo. Identify each food item, estimate portion sizes, and provide nutritional information (calories, protein, carbs, fat) for each item. Be as accurate as possible with your estimates. Also provide a confidence level (low/medium/high) based on how clearly you can identify the food.",
+						text: `Analyze this food photo. Identify each food item and provide nutritional information (calories, protein, carbs, fat).
+
+IMPORTANT rules for quantity and naming:
+- The "name" field must be the item name WITHOUT any quantity prefix (e.g. "Avocado Toast" not "2 Avocado Toast").
+- The "quantity" field must be the count of that item (e.g. 2 if there are 2 slices of toast).
+- The "estimatedPortion" field describes one single unit (e.g. "1 slice", "1 piece", "1 cup").
+- All nutritional values (calories, proteinG, carbsG, fatG) must be for ONE single unit, not multiplied by quantity.
+
+Be as accurate as possible with your estimates. Also provide a confidence level (low/medium/high) based on how clearly you can identify the food.${
+							userContext
+								? `\n\nThe user has provided additional context about this meal: "${userContext}"\nUse this context to improve your analysis. This is legitimate user input (not from the image). If they mention specific ingredients or dishes, factor that into your identification and nutritional estimates.`
+								: ""
+						}`,
 					},
 					{
 						type: "image",

@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
-import type { FoodAnalysisResult } from "@bitebuddy/shared";
 import { compressImage } from "@/lib/compress-image";
+import type { FoodAnalysisResult } from "@bitebuddy/shared";
 import {
 	AlertTriangle,
 	ArrowLeft,
@@ -13,11 +13,13 @@ import {
 	ChevronRight,
 	ImagePlus,
 	ListPlus,
+	MessageSquarePlus,
 	Minus,
 	PenLine,
 	Plus,
 	RotateCcw,
 	ShieldCheck,
+	Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -37,6 +39,9 @@ export default function LogPage() {
 	const [saving, setSaving] = useState(false);
 
 	const [multipliers, setMultipliers] = useState<number[]>([]);
+	const [userContext, setUserContext] = useState("");
+	const [showContextInput, setShowContextInput] = useState(false);
+	const [imageBase64, setImageBase64] = useState<string | null>(null);
 
 	const [manualName, setManualName] = useState("");
 	const [manualCalories, setManualCalories] = useState("");
@@ -56,12 +61,30 @@ export default function LogPage() {
 
 		try {
 			const base64 = await compressImage(file);
+			setImageBase64(base64);
+			setUserContext("");
+			setShowContextInput(false);
 			const result = await api<FoodAnalysisResult>("/api/analyze", {
 				method: "POST",
 				body: JSON.stringify({ image: base64 }),
 			});
-			setAnalysis(result);
-			setMultipliers(result.items.map(() => 1));
+			// Scale per-unit nutrition by quantity so displayed totals are correct
+			const scaledItems = result.items.map((item) => ({
+				...item,
+				calories: Math.round(item.calories * (item.quantity ?? 1)),
+				proteinG: Math.round(item.proteinG * (item.quantity ?? 1) * 10) / 10,
+				carbsG: Math.round(item.carbsG * (item.quantity ?? 1) * 10) / 10,
+				fatG: Math.round(item.fatG * (item.quantity ?? 1) * 10) / 10,
+			}));
+			setAnalysis({
+				...result,
+				items: scaledItems,
+				totalCalories: scaledItems.reduce((s, i) => s + i.calories, 0),
+				totalProteinG: scaledItems.reduce((s, i) => s + i.proteinG, 0),
+				totalCarbsG: scaledItems.reduce((s, i) => s + i.carbsG, 0),
+				totalFatG: scaledItems.reduce((s, i) => s + i.fatG, 0),
+			});
+			setMultipliers(result.items.map((item) => item.quantity ?? 1));
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Analysis failed";
 			setAnalysisError(message);
@@ -163,13 +186,48 @@ export default function LogPage() {
 		setMultipliers(newMultipliers);
 	}
 
+	async function handleReanalyze() {
+		if (!imageBase64 || !userContext.trim()) return;
+		setAnalyzing(true);
+		setAnalysisError(null);
+		try {
+			const result = await api<FoodAnalysisResult>("/api/analyze", {
+				method: "POST",
+				body: JSON.stringify({ image: imageBase64, context: userContext.trim() }),
+			});
+			const scaledItems = result.items.map((item) => ({
+				...item,
+				calories: Math.round(item.calories * (item.quantity ?? 1)),
+				proteinG: Math.round(item.proteinG * (item.quantity ?? 1) * 10) / 10,
+				carbsG: Math.round(item.carbsG * (item.quantity ?? 1) * 10) / 10,
+				fatG: Math.round(item.fatG * (item.quantity ?? 1) * 10) / 10,
+			}));
+			setAnalysis({
+				...result,
+				items: scaledItems,
+				totalCalories: scaledItems.reduce((s, i) => s + i.calories, 0),
+				totalProteinG: scaledItems.reduce((s, i) => s + i.proteinG, 0),
+				totalCarbsG: scaledItems.reduce((s, i) => s + i.carbsG, 0),
+				totalFatG: scaledItems.reduce((s, i) => s + i.fatG, 0),
+			});
+			setMultipliers(result.items.map((item) => item.quantity ?? 1));
+			setShowContextInput(false);
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Re-analysis failed";
+			setAnalysisError(message);
+		} finally {
+			setAnalyzing(false);
+		}
+	}
+
 	// Choose mode
 	if (mode === "choose") {
 		return (
 			<div className="space-y-6">
 				{/* Camera Viewfinder Card */}
-				<section
-					className="relative w-full aspect-[4/5] rounded-[40px] overflow-hidden bg-black shadow-2xl border border-white/10 group cursor-pointer"
+				<button
+					type="button"
+					className="relative w-full aspect-[4/5] rounded-[40px] overflow-hidden bg-black shadow-2xl border border-white/10 group cursor-pointer text-left"
 					onClick={() => fileInputRef.current?.click()}
 				>
 					<img
@@ -178,7 +236,10 @@ export default function LogPage() {
 						src="https://lh3.googleusercontent.com/aida-public/AB6AXuClOqmQe2YlqdEYOD_5VgZv4pZlg5Uu6QFvyNCmB5EhDdEygkJmioHcJYA5UI_hDIVJTsoIeaesw3-NqtBkPszFnmkno_f2GIrvvnM1-_b3jHerMdq519EysA8zZISSa7a1bB570NWRDgCnfZrkZwAgCf14LgTbjWtu3Gz6ymcrvk20Lw002jDF-1PaJc6SADow9tlUt_a63K1mhyoSABNYlJy23pWDm7me9IkyRaZBSVvKupT86_wS5WVVXhz1At6ArqKvYizwMwI"
 					/>
 					{/* Vignette overlay */}
-					<div className="absolute inset-0" style={{ background: "radial-gradient(circle, transparent 40%, rgba(0,0,0,0.3) 100%)" }} />
+					<div
+						className="absolute inset-0"
+						style={{ background: "radial-gradient(circle, transparent 40%, rgba(0,0,0,0.3) 100%)" }}
+					/>
 					{/* Viewfinder corners */}
 					<div className="absolute inset-10 border border-white/20 rounded-2xl pointer-events-none">
 						<div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white/60 -m-1" />
@@ -189,7 +250,9 @@ export default function LogPage() {
 					<div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
 						{/* Auto-Detection badge */}
 						<div className="mb-auto mt-4 backdrop-blur-md bg-white/10 px-4 py-1.5 rounded-full border border-white/20">
-							<p className="text-white text-xs font-bold tracking-widest uppercase">Auto-Detection Active</p>
+							<p className="text-white text-xs font-bold tracking-widest uppercase">
+								Auto-Detection Active
+							</p>
 						</div>
 						{/* Shutter button */}
 						<div className="space-y-4">
@@ -200,7 +263,9 @@ export default function LogPage() {
 							</div>
 							<div className="space-y-1">
 								<p className="font-bold text-white text-2xl drop-shadow-lg">Snap your plate</p>
-								<p className="text-white/80 text-sm drop-shadow-md">AI will analyze your nutrition instantly</p>
+								<p className="text-white/80 text-sm drop-shadow-md">
+									AI will analyze your nutrition instantly
+								</p>
 							</div>
 						</div>
 						{/* Gallery button */}
@@ -216,7 +281,7 @@ export default function LogPage() {
 							Choose from Gallery
 						</button>
 					</div>
-				</section>
+				</button>
 				{/* Camera input (mobile: opens camera directly) */}
 				<input
 					ref={fileInputRef}
@@ -285,11 +350,7 @@ export default function LogPage() {
 
 				{previewUrl && (
 					<div className="relative rounded-3xl overflow-hidden">
-						<img
-							src={previewUrl}
-							alt="Meal"
-							className="w-full max-h-64 object-cover"
-						/>
+						<img src={previewUrl} alt="Meal" className="w-full max-h-64 object-cover" />
 						<div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
 					</div>
 				)}
@@ -299,9 +360,7 @@ export default function LogPage() {
 						<div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center mx-auto mb-3 animate-pulse">
 							<Camera className="size-6 text-white" />
 						</div>
-						<p className="text-on-surface-variant font-medium">
-							Analyzing your meal...
-						</p>
+						<p className="text-on-surface-variant font-medium">Analyzing your meal...</p>
 					</div>
 				)}
 
@@ -319,8 +378,32 @@ export default function LogPage() {
 						<div className="space-y-1">
 							<h2 className="font-bold text-foreground text-lg">No food detected</h2>
 							<p className="text-sm text-on-surface-variant">
-								We couldn't identify any food items in this photo. Make sure the food is clearly visible and well-lit.
+								We couldn't identify any food items in this photo. Try describing what you ate
+								below, or take another photo.
 							</p>
+						</div>
+						<div className="space-y-3">
+							<textarea
+								value={userContext}
+								onChange={(e) => setUserContext(e.target.value.slice(0, 500))}
+								placeholder="Describe your meal, e.g. 'chicken caesar salad with croutons'..."
+								disabled={analyzing}
+								className="w-full h-20 p-3 text-sm bg-surface-container-low rounded-xl resize-none placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+							/>
+							<div className="flex items-center justify-between">
+								<span className="text-[10px] text-on-surface-variant">
+									{userContext.length}/500
+								</span>
+								<Button
+									onClick={handleReanalyze}
+									disabled={analyzing || !userContext.trim()}
+									size="sm"
+									className="rounded-full"
+								>
+									{analyzing ? "Analyzing..." : "Re-analyze"}
+									{!analyzing && <Sparkles className="ml-1.5 size-3.5" />}
+								</Button>
+							</div>
 						</div>
 						<div className="flex gap-3">
 							<Button
@@ -378,9 +461,7 @@ export default function LogPage() {
 							<div className="text-center mb-3">
 								<p className="text-3xl font-bold text-foreground">
 									{Math.round(analysis.totalCalories)}{" "}
-									<span className="text-sm font-normal text-on-surface-variant">
-										kcal
-									</span>
+									<span className="text-sm font-normal text-on-surface-variant">kcal</span>
 								</p>
 							</div>
 							<div className="grid grid-cols-3 gap-2">
@@ -388,17 +469,13 @@ export default function LogPage() {
 									<p className="text-sm font-bold text-primary">
 										{Math.round(analysis.totalProteinG)}g
 									</p>
-									<p className="text-[10px] text-on-surface-variant">
-										Protein
-									</p>
+									<p className="text-[10px] text-on-surface-variant">Protein</p>
 								</div>
 								<div className="bg-secondary/5 rounded-xl p-2.5 text-center">
 									<p className="text-sm font-bold text-secondary">
 										{Math.round(analysis.totalCarbsG)}g
 									</p>
-									<p className="text-[10px] text-on-surface-variant">
-										Carbs
-									</p>
+									<p className="text-[10px] text-on-surface-variant">Carbs</p>
 								</div>
 								<div className="bg-tertiary/5 rounded-xl p-2.5 text-center">
 									<p className="text-sm font-bold text-tertiary">
@@ -412,17 +489,13 @@ export default function LogPage() {
 						{/* Individual items */}
 						{analysis.items.map((item, i) => (
 							<div
-								key={i}
+								key={`${item.name}-${i}`}
 								className="bg-card rounded-2xl p-4 shadow-[0_12px_32px_rgba(18,28,42,0.04)] border border-outline-variant/10"
 							>
 								<div className="flex items-start justify-between mb-3">
 									<div>
-										<p className="font-semibold text-sm text-foreground">
-											{item.name}
-										</p>
-										<p className="text-xs text-on-surface-variant">
-											{item.estimatedPortion}
-										</p>
+										<p className="font-semibold text-sm text-foreground">{item.name}</p>
+										<p className="text-xs text-on-surface-variant">{item.estimatedPortion}</p>
 									</div>
 									<div className="flex items-center gap-1.5">
 										<button
@@ -447,76 +520,83 @@ export default function LogPage() {
 								</div>
 								<div className="grid grid-cols-4 gap-2">
 									<div>
-										<Label className="text-[10px] text-on-surface-variant">
-											Cal
-										</Label>
+										<Label className="text-[10px] text-on-surface-variant">Cal</Label>
 										<Input
 											type="number"
 											value={item.calories}
-											onChange={(e) =>
-												updateAnalysisItem(
-													i,
-													"calories",
-													Number(e.target.value),
-												)
-											}
+											onChange={(e) => updateAnalysisItem(i, "calories", Number(e.target.value))}
 											className="text-sm bg-surface-container-low border-0 rounded-xl h-10"
 										/>
 									</div>
 									<div>
-										<Label className="text-[10px] text-on-surface-variant">
-											Protein
-										</Label>
+										<Label className="text-[10px] text-on-surface-variant">Protein</Label>
 										<Input
 											type="number"
 											value={item.proteinG}
-											onChange={(e) =>
-												updateAnalysisItem(
-													i,
-													"proteinG",
-													Number(e.target.value),
-												)
-											}
+											onChange={(e) => updateAnalysisItem(i, "proteinG", Number(e.target.value))}
 											className="text-sm bg-surface-container-low border-0 rounded-xl h-10"
 										/>
 									</div>
 									<div>
-										<Label className="text-[10px] text-on-surface-variant">
-											Carbs
-										</Label>
+										<Label className="text-[10px] text-on-surface-variant">Carbs</Label>
 										<Input
 											type="number"
 											value={item.carbsG}
-											onChange={(e) =>
-												updateAnalysisItem(
-													i,
-													"carbsG",
-													Number(e.target.value),
-												)
-											}
+											onChange={(e) => updateAnalysisItem(i, "carbsG", Number(e.target.value))}
 											className="text-sm bg-surface-container-low border-0 rounded-xl h-10"
 										/>
 									</div>
 									<div>
-										<Label className="text-[10px] text-on-surface-variant">
-											Fat
-										</Label>
+										<Label className="text-[10px] text-on-surface-variant">Fat</Label>
 										<Input
 											type="number"
 											value={item.fatG}
-											onChange={(e) =>
-												updateAnalysisItem(
-													i,
-													"fatG",
-													Number(e.target.value),
-												)
-											}
+											onChange={(e) => updateAnalysisItem(i, "fatG", Number(e.target.value))}
 											className="text-sm bg-surface-container-low border-0 rounded-xl h-10"
 										/>
 									</div>
 								</div>
 							</div>
 						))}
+
+						{/* Refine with AI */}
+						<div className="space-y-3">
+							<button
+								type="button"
+								onClick={() => setShowContextInput(!showContextInput)}
+								className="w-full py-3 text-on-surface-variant font-semibold text-sm bg-surface-container-high/40 rounded-2xl hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2"
+							>
+								<MessageSquarePlus className="size-4" />
+								{showContextInput ? "Hide" : "Refine with AI"}
+							</button>
+							{showContextInput && (
+								<div className="bg-card rounded-2xl p-4 shadow-[0_12px_32px_rgba(18,28,42,0.04)] border border-outline-variant/10 space-y-3">
+									<textarea
+										value={userContext}
+										onChange={(e) => setUserContext(e.target.value.slice(0, 500))}
+										placeholder="Describe your meal or add missing ingredients, e.g. 'this is pad thai with shrimp, not lo mein'..."
+										disabled={analyzing}
+										rows={3}
+										className="w-full p-3 text-sm bg-surface-container-low rounded-xl resize-none placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+									/>
+									<div className="flex items-center justify-between">
+										<span className="text-[10px] text-on-surface-variant">
+											{userContext.length}/500
+										</span>
+										<Button
+											onClick={handleReanalyze}
+											disabled={analyzing || !userContext.trim()}
+											size="sm"
+											variant="outline"
+											className="rounded-full"
+										>
+											{analyzing ? "Analyzing..." : "Re-analyze"}
+											{!analyzing && <Sparkles className="ml-1.5 size-3.5" />}
+										</Button>
+									</div>
+								</div>
+							)}
+						</div>
 
 						<Button
 							onClick={handleSaveAnalysis}
@@ -548,9 +628,7 @@ export default function LogPage() {
 
 			<div className="bg-card rounded-3xl p-5 shadow-[0_12px_32px_rgba(18,28,42,0.04)] border border-outline-variant/10 space-y-4">
 				<div>
-					<Label className="mb-1 text-sm text-on-surface-variant">
-						Food Name
-					</Label>
+					<Label className="mb-1 text-sm text-on-surface-variant">Food Name</Label>
 					<Input
 						type="text"
 						value={manualName}
@@ -560,9 +638,7 @@ export default function LogPage() {
 					/>
 				</div>
 				<div>
-					<Label className="mb-1 text-sm text-on-surface-variant">
-						Calories
-					</Label>
+					<Label className="mb-1 text-sm text-on-surface-variant">Calories</Label>
 					<Input
 						type="number"
 						value={manualCalories}
@@ -573,9 +649,7 @@ export default function LogPage() {
 				</div>
 				<div className="grid grid-cols-3 gap-3">
 					<div>
-						<Label className="mb-1 text-sm text-on-surface-variant">
-							Protein (g)
-						</Label>
+						<Label className="mb-1 text-sm text-on-surface-variant">Protein (g)</Label>
 						<Input
 							type="number"
 							value={manualProtein}
@@ -585,9 +659,7 @@ export default function LogPage() {
 						/>
 					</div>
 					<div>
-						<Label className="mb-1 text-sm text-on-surface-variant">
-							Carbs (g)
-						</Label>
+						<Label className="mb-1 text-sm text-on-surface-variant">Carbs (g)</Label>
 						<Input
 							type="number"
 							value={manualCarbs}
@@ -597,9 +669,7 @@ export default function LogPage() {
 						/>
 					</div>
 					<div>
-						<Label className="mb-1 text-sm text-on-surface-variant">
-							Fat (g)
-						</Label>
+						<Label className="mb-1 text-sm text-on-surface-variant">Fat (g)</Label>
 						<Input
 							type="number"
 							value={manualFat}

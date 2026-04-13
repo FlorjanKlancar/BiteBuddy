@@ -16,6 +16,7 @@ export type NutritionInfo = z.infer<typeof NutritionInfo>;
 
 export const AnalyzedFoodItem = z.object({
 	name: z.string(),
+	quantity: z.number().min(1).default(1),
 	estimatedPortion: z.string(),
 	calories: z.number(),
 	proteinG: z.number(),

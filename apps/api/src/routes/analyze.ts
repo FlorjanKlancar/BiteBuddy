@@ -36,10 +36,14 @@ app.post("/", authMiddleware, async (c) => {
 	}
 
 	const body = await c.req.json();
-	const { image } = body as { image: string };
+	const { image, context } = body as { image: string; context?: string };
 
 	if (!image || typeof image !== "string") {
 		return c.json({ error: "Image is required" }, 400);
+	}
+
+	if (context !== undefined && (typeof context !== "string" || context.length > 500)) {
+		return c.json({ error: "Context must be a string of 500 characters or less." }, 400);
 	}
 
 	if (image.length > MAX_BASE64_SIZE) {
@@ -50,15 +54,12 @@ app.post("/", authMiddleware, async (c) => {
 		return c.json({ error: "Invalid image data" }, 400);
 	}
 
-	if (
-		!process.env.OPENAI_API_KEY ||
-		process.env.OPENAI_API_KEY === "sk-your-openai-api-key"
-	) {
+	if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "sk-your-openai-api-key") {
 		return c.json({ error: "OpenAI API key is not configured. Set OPENAI_API_KEY in .env" }, 503);
 	}
 
 	try {
-		const result = await analyzeFood(image);
+		const result = await analyzeFood(image, context);
 		return c.json(result);
 	} catch (err) {
 		console.error("AI analysis failed:", err);

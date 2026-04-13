@@ -26,7 +26,7 @@ export default function DashboardPage() {
 	const { data: session } = useSession();
 	const [daily, setDaily] = useState<DailySummary | null>(null);
 	const [weekly, setWeekly] = useState<WeeklySummary[]>([]);
-	const [calorieTarget] = useState(2000);
+	const [calorieTarget, setCalorieTarget] = useState(2000);
 	const [loading, setLoading] = useState(true);
 
 	const today = new Date().toISOString().split("T")[0];
@@ -36,6 +36,9 @@ export default function DashboardPage() {
 		Promise.all([
 			api<DailySummary>(`/api/stats/daily?date=${today}`).then(setDaily),
 			api<WeeklySummary[]>("/api/stats/weekly").then(setWeekly),
+			api<{ calorieTarget?: number } | null>("/api/profile").then((p) => {
+				if (p?.calorieTarget) setCalorieTarget(p.calorieTarget);
+			}),
 		])
 			.catch(console.error)
 			.finally(() => setLoading(false));
@@ -48,16 +51,46 @@ export default function DashboardPage() {
 	function getMotivation() {
 		if (!daily || consumed === 0) return null;
 		if (consumed > calorieTarget * 1.2)
-			return { title: "Over budget", subtitle: "You've exceeded your goal by quite a bit — tomorrow's a fresh start!", emoji: "😅", gradient: "from-red-500 to-red-700" };
+			return {
+				title: "Over budget",
+				subtitle: "You've exceeded your goal by quite a bit — tomorrow's a fresh start!",
+				emoji: "😅",
+				gradient: "from-red-500 to-red-700",
+			};
 		if (consumed > calorieTarget * 1.05)
-			return { title: "Slightly over", subtitle: "Just a little above your target — still a solid day!", emoji: "💪", gradient: "from-orange-500 to-orange-700" };
+			return {
+				title: "Slightly over",
+				subtitle: "Just a little above your target — still a solid day!",
+				emoji: "💪",
+				gradient: "from-orange-500 to-orange-700",
+			};
 		if (progress >= 0.9)
-			return { title: "Perfect Score!", subtitle: "You hit your goals today!", emoji: "🎉", gradient: "from-green-500 to-green-700" };
+			return {
+				title: "Perfect Score!",
+				subtitle: "You hit your goals today!",
+				emoji: "🎉",
+				gradient: "from-green-500 to-green-700",
+			};
 		if (progress >= 0.7)
-			return { title: "Almost there!", subtitle: `Just ${remaining.toLocaleString()} kcal left — you're so close!`, emoji: "🔥", gradient: "from-blue-500 to-blue-700" };
+			return {
+				title: "Almost there!",
+				subtitle: `Just ${remaining.toLocaleString()} kcal left — you're so close!`,
+				emoji: "🔥",
+				gradient: "from-blue-500 to-blue-700",
+			};
 		if (progress >= 0.4)
-			return { title: "Good progress", subtitle: `${remaining.toLocaleString()} kcal remaining — keep going!`, emoji: "⚡", gradient: "from-indigo-500 to-indigo-700" };
-		return { title: "Just getting started", subtitle: `${remaining.toLocaleString()} kcal left to hit your goal`, emoji: "🍽️", gradient: "from-slate-500 to-slate-700" };
+			return {
+				title: "Good progress",
+				subtitle: `${remaining.toLocaleString()} kcal remaining — keep going!`,
+				emoji: "⚡",
+				gradient: "from-indigo-500 to-indigo-700",
+			};
+		return {
+			title: "Just getting started",
+			subtitle: `${remaining.toLocaleString()} kcal left to hit your goal`,
+			emoji: "🍽️",
+			gradient: "from-slate-500 to-slate-700",
+		};
 	}
 
 	const motivation = getMotivation();
@@ -116,7 +149,10 @@ export default function DashboardPage() {
 									Averaging {weeklyAvg.toLocaleString()} kcal/day
 								</p>
 							</div>
-							<button type="button" className="text-primary text-xs font-semibold hover:opacity-80 transition-opacity">
+							<button
+								type="button"
+								className="text-primary text-xs font-semibold hover:opacity-80 transition-opacity"
+							>
 								View Details
 							</button>
 						</div>
@@ -133,8 +169,12 @@ export default function DashboardPage() {
 											}`}
 											style={{ height: `${Math.max(height, 5)}%` }}
 										/>
-										<span className={`text-[10px] font-medium ${isToday ? "font-bold text-primary" : "text-on-surface-variant"}`}>
-											{new Date(day.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "narrow" })}
+										<span
+											className={`text-[10px] font-medium ${isToday ? "font-bold text-primary" : "text-on-surface-variant"}`}
+										>
+											{new Date(`${day.date}T12:00:00`).toLocaleDateString("en-US", {
+												weekday: "narrow",
+											})}
 										</span>
 									</div>
 								);
@@ -147,7 +187,9 @@ export default function DashboardPage() {
 			{/* Motivation */}
 			{motivation && (
 				<FadeIn delay={0.3}>
-					<div className={`relative overflow-hidden bg-gradient-to-br ${motivation.gradient} rounded-3xl p-6 text-white shadow-lg`}>
+					<div
+						className={`relative overflow-hidden bg-gradient-to-br ${motivation.gradient} rounded-3xl p-6 text-white shadow-lg`}
+					>
 						<div className="relative z-10 flex items-center justify-between">
 							<div className="space-y-1">
 								<h4 className="font-bold text-xl">{motivation.title}</h4>
