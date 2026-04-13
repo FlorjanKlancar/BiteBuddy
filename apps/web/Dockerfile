@@ -17,23 +17,15 @@ COPY . .
 ENV NODE_ENV=production
 RUN cd apps/web && bun run next build
 
-# Resolve bun's symlinks in standalone so Docker COPY works correctly
-RUN cp -rL /app/apps/web/.next/standalone /standalone-resolved
-
-FROM node:20-alpine AS runner
+FROM oven/bun:1-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
-COPY --from=builder --chown=nextjs:nodejs /standalone-resolved ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
-
-USER nextjs
+COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder /app/apps/web/.next/standalone ./
+COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 
 EXPOSE 3000
-CMD ["node", "apps/web/server.js"]
+CMD ["bun", "run", "apps/web/server.js"]
