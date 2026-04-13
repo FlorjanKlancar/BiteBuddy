@@ -6,6 +6,8 @@ import * as schema from "./db/schema.js";
 
 const frontendUrl = process.env.FRONTEND_URL ?? `http://localhost:${PORTS.web}`;
 
+const isProduction = process.env.NODE_ENV === "production";
+
 export const auth = betterAuth({
 	baseURL: process.env.BETTER_AUTH_URL,
 	database: drizzleAdapter(db, {
@@ -28,4 +30,11 @@ export const auth = betterAuth({
 			: {}),
 	},
 	trustedOrigins: [frontendUrl],
+	advanced: {
+		useSecureCookies: isProduction,
+		defaultCookieAttributes: {
+			sameSite: "none",
+			secure: isProduction,
+		},
+	},
 });
