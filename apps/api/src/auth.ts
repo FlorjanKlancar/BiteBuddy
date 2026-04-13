@@ -7,6 +7,7 @@ import * as schema from "./db/schema.js";
 const frontendUrl = process.env.FRONTEND_URL ?? `http://localhost:${PORTS.web}`;
 
 export const auth = betterAuth({
+	baseURL: process.env.BETTER_AUTH_URL,
 	database: drizzleAdapter(db, {
 		provider: "pg",
 		schema,
