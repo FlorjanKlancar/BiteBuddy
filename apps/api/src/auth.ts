@@ -1,6 +1,6 @@
+import { PORTS } from "@bitebuddy/shared";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { PORTS } from "@bitebuddy/shared";
 import { db } from "./db/index.js";
 import * as schema from "./db/schema.js";
 
@@ -38,7 +38,7 @@ export const auth = betterAuth({
 	advanced: {
 		useSecureCookies: isProduction,
 		defaultCookieAttributes: {
-			sameSite: "none",
+			sameSite: "lax",
 			secure: isProduction,
 		},
 	},
