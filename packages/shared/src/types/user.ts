@@ -22,6 +22,6 @@ export const UserProfile = z.object({
 	proteinTargetG: z.number().min(0),
 	carbsTargetG: z.number().min(0),
 	fatTargetG: z.number().min(0),
-	weightGoalKg: z.number().min(20).max(500).nullable(),
+	weightGoalKg: z.number().min(20).max(500).nullable().optional(),
 });
 export type UserProfile = z.infer<typeof UserProfile>;
