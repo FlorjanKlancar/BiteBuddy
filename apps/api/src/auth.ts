@@ -30,6 +30,11 @@ export const auth = betterAuth({
 			: {}),
 	},
 	trustedOrigins: [frontendUrl],
+	account: {
+		// State is stored in the database; skip the additional cookie check
+		// which fails in cross-domain deployments (third-party cookies blocked).
+		skipStateCookieCheck: true,
+	},
 	advanced: {
 		useSecureCookies: isProduction,
 		defaultCookieAttributes: {
